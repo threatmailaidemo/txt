@@ -1,39 +1,28 @@
-Step 1: Import Libraries
 
 import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-from sklearn.datasets import load_wine
+from sklearn.datasets import load_iris
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
-from sklearn.decomposition import PCA
 
-
-Step 2: Create the Folder
-
+# Step 1: Create Folder
 os.makedirs("figs", exist_ok=True)
 
-
-
-Step 3: Load and Standardize Dataset
-
-data = load_wine()
+# Step 2: Load Dataset
+data = load_iris()
 X = data.data
 
 print("Dataset shape:", X.shape)
 
+# Step 3: Standardize Dataset
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-
-Step 4: Calculate WCSS and Silhouette Scores
-
-K_range = range(2, 11)
-
+# Step 4: Calculate WCSS using Elbow Method
+K_range = range(1, 11)
 wcss = []
-sil = []
 
 for k in K_range:
     km = KMeans(
@@ -42,79 +31,44 @@ for k in K_range:
         n_init=10,
         random_state=42
     )
-    
+
     km.fit(X_scaled)
-    
     wcss.append(km.inertia_)
-    sil.append(silhouette_score(X_scaled, km.labels_))
 
+# Step 5: Display WCSS Results
+print(f"\n{'K':<4}{'WCSS':>12}")
 
-Step 5: Display the Results
+for k, w in zip(K_range, wcss):
+    print(f"{k:<4}{w:>12.2f}")
 
-print(f"\n{'K':<4}{'WCSS':>12}{'Silhouette':>14}")
-
-for k, w, s in zip(K_range, wcss, sil):
-    print(f"{k:<4}{w:>12.2f}{s:>14.4f}")
-
-
-
-Step 6: Find the Best K
-
-best_k = list(K_range)[int(np.argmax(sil))]
-
-print("\nK with highest silhouette score:", best_k)
-
+# Step 6: Find Optimal K
 d2 = np.diff(wcss, 2)
 elbow_k = list(K_range)[int(np.argmax(d2)) + 1]
 
-print("Elbow (max curvature) at K =", elbow_k)
+print("\nOptimal K using Elbow Method =", elbow_k)
 
+# Step 7: Display Elbow Graph
+plt.figure(figsize=(7, 5))
 
+plt.plot(list(K_range), wcss, marker="o")
 
-Step 7: Display Elbow and Silhouette Graphs 📊
-
-fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-
-# Elbow Method
-ax[0].plot(list(K_range), wcss, marker="o")
-ax[0].axvline(
+plt.axvline(
     elbow_k,
     linestyle="--",
     label=f"Elbow K = {elbow_k}"
 )
 
-ax[0].set_xlabel("Number of Clusters (K)")
-ax[0].set_ylabel("WCSS")
-ax[0].set_title("Elbow Method")
-ax[0].legend()
-ax[0].grid(True)
-
-
-# Silhouette Method
-ax[1].plot(list(K_range), sil, marker="o")
-ax[1].axvline(
-    best_k,
-    linestyle="--",
-    label=f"Best K = {best_k}"
-)
-
-ax[1].set_xlabel("Number of Clusters (K)")
-ax[1].set_ylabel("Silhouette Score")
-ax[1].set_title("Silhouette Method")
-ax[1].legend()
-ax[1].grid(True)
+plt.xlabel("Number of Clusters (K)")
+plt.ylabel("WCSS")
+plt.title("Elbow Method")
+plt.legend()
+plt.grid(True)
 
 plt.tight_layout()
-
-# SHOW GRAPH FIRST
+plt.savefig("figs/exp8_elbow.png", dpi=150)
 plt.show()
 
-# Then save it
-fig.savefig("figs/exp8_elbow_sil.png", dpi=150)
-
-
-Step 8: Create Final K-Means Model
-
+# Step 8: Create Final K-Means Model
 final_k = 3
 
 km = KMeans(
@@ -128,28 +82,15 @@ km.fit(X_scaled)
 
 print(f"\nFinal model: K = {final_k}")
 print("Cluster sizes:", np.bincount(km.labels_))
-print("Silhouette score:", round(
-    silhouette_score(X_scaled, km.labels_), 4
-))
 print("WCSS (inertia):", round(km.inertia_, 2))
 
-
-Step 9: Apply PCA
-
-pca = PCA(n_components=2)
-
-X2 = pca.fit_transform(X_scaled)
-C2 = pca.transform(km.cluster_centers_)
-
-
-Step 10: Display Final Cluster Graph 🎯
-
+# Step 9: Display Final Cluster Graph
 plt.figure(figsize=(7, 5))
 
-# Plot clusters
+# Plot clusters using first two features
 plt.scatter(
-    X2[:, 0],
-    X2[:, 1],
+    X_scaled[:, 0],
+    X_scaled[:, 1],
     c=km.labels_,
     cmap="viridis",
     s=40,
@@ -158,25 +99,20 @@ plt.scatter(
 
 # Plot centroids
 plt.scatter(
-    C2[:, 0],
-    C2[:, 1],
+    km.cluster_centers_[:, 0],
+    km.cluster_centers_[:, 1],
     marker="X",
     s=250,
     label="Centroids",
     edgecolor="black"
 )
 
-plt.xlabel("Principal Component 1 (PC1)")
-plt.ylabel("Principal Component 2 (PC2)")
+plt.xlabel("Sepal Length (Standardized)")
+plt.ylabel("Sepal Width (Standardized)")
 plt.title(f"K-Means Clusters (K = {final_k})")
 plt.legend()
 plt.grid(True)
 
 plt.tight_layout()
-
-# SHOW GRAPH
-plt.show()
-
-# Save graph
 plt.savefig("figs/exp8_clusters.png", dpi=150)
-
+plt.show()
